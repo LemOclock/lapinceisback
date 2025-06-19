@@ -36,6 +36,10 @@ export async function createCompte(req, res) {
 // Récupère tous les comptes
 export async function getAllComptes(req, res) {
   try {
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
+    }
     const comptes = await Compte.findAll();
     res.json(comptes);
   } catch (error) {

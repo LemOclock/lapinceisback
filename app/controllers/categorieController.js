@@ -3,6 +3,10 @@ import { Categorie } from '../models/associations.js';
 // Créer une catégorie
 export async function createCategorie(req, res) {
   try {
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
+    }
     const { nom_categorie, description, couleur, icone } = req.body;
     const categorie = await Categorie.create({ nom_categorie, description, couleur, icone });
     res.status(201).json(categorie);
@@ -47,6 +51,10 @@ export async function getCategorieById(req, res) {
 // Mettre à jour une catégorie
 export async function updateCategorie(req, res) {
   try {
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
+    }
     const { id } = req.params;
     const { nom_categorie, description, couleur, icone } = req.body;
     const categorie = await Categorie.findByPk(id);

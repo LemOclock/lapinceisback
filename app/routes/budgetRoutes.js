@@ -7,24 +7,25 @@ import {
     deleteBudget
 } from '../controllers/budgetController.js';
 import isLogged from '../middlewares/isLogged.js';
-import isAdmin from '../middlewares/isAdmin.js';
-import isOwner from '../middlewares/isOwner.js';
 
 const router = Router();
 
+router.use(isLogged);
+
+
 // Récupérer tous les budgets
-router.get('/', isLogged, isAdmin, getAllBudgets);
+router.get('/', getAllBudgets);
 
 // Créer un budget
-router.post('/', isLogged, isAdmin, isOwner, createBudget);
+router.post('/', createBudget);
 
 // Récupérer un budget par id
-router.get('/:id', isLogged, isAdmin, getBudgetById);
+router.get('/:id', getBudgetById);
 
 // Mettre à jour un budget
-router.put('/:id', isLogged, isAdmin, isOwner, updateBudget);
+router.put('/:id', updateBudget);
 
 // Supprimer un budget
-router.delete('/:id', isLogged, isAdmin, isOwner, deleteBudget);
+router.delete('/:id', deleteBudget);
 
 export default router;

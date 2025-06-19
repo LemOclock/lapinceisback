@@ -9,14 +9,13 @@ import isLogged from './middlewares/isLogged.js';
 const router = express.Router();
 
 
-
 router.get('/', mainController.home);
 
 router.get('/legal', mainController.legal);
 router.get('/about', mainController.about);
 router.get('/contact', mainController.contact);
-router.get('/dashboard', isLogged , mainController.dashboard);
-router.get('/account', isLogged , mainController.account);
+router.get('/dashboard', isLogged, mainController.dashboard);
+router.get('/account', isLogged, mainController.account);
 
 router.get('/login', authController.login);
 router.post('/login', authController.loginAction);
@@ -24,7 +23,7 @@ router.get('/register', authController.signup);
 router.post('/register', authController.signupAction);
 router.post('/logout', isLogged, authController.logout);
 router.post('/forgot-password', authController.logout);
-router.post('/reset-password',  authController.logout);
+router.post('/reset-password', authController.logout);
 
 router.get('/profile', isLogged, utilisateurController.profile);
 router.put('/profile', isLogged, utilisateurController.profile);

@@ -7,10 +7,10 @@ import {
     deleteOperation
 } from '../controllers/operationController.js';
 import isLogged from '../middlewares/isLogged.js';
-import isAdmin from '../middlewares/isAdmin.js';
-import isOwner from '../middlewares/isOwner.js';
 
 const router = Router();
+
+router.use(isLogged);
 
 router.get('/', getAllOperations);
 router.post('/', createOperation);

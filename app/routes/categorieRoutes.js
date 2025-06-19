@@ -7,14 +7,15 @@ import {
     deleteCategorie
 } from '../controllers/categorieController.js';
 import isLogged from '../middlewares/isLogged.js';
-import isAdmin from '../middlewares/isAdmin.js';
 
 const router = Router();
 
-router.get('/', isAdmin, getAllCategories);
-router.post('/', isLogged, isAdmin, createCategorie);
-router.get('/:id', isLogged, isAdmin, getCategorieById);
-router.put('/:id', isLogged, isAdmin, updateCategorie);
-router.delete('/:id', isLogged, isAdmin, deleteCategorie);
+router.use(isLogged);
+
+router.get('/', getAllCategories);
+router.post('/', createCategorie);
+router.get('/:id', isLogged, getCategorieById);
+router.put('/:id', updateCategorie);
+router.delete('/:id', deleteCategorie);
 
 export default router;

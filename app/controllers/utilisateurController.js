@@ -25,6 +25,7 @@ const utilisateurController = {
 
 export async function createUtilisateur(req, res) {
   try {
+
     const utilisateur = await createUserWithValidation(req.body);
     res.status(201).json(utilisateur);
   } catch (error) {
@@ -37,6 +38,9 @@ export async function createUtilisateur(req, res) {
 export async function getAllUtilisateurs(req, res) {
   console.log("getAllUtilisateurs called");
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
+    }
     const utilisateurs = await Utilisateur.findAll();
     res.json(utilisateurs);
   } catch (error) {

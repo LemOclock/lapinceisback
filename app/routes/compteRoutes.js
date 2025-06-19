@@ -7,15 +7,16 @@ import {
     deleteCompte
 } from '../controllers/compteController.js';
 import isLogged from '../middlewares/isLogged.js';
-import isAdmin from '../middlewares/isAdmin.js';
-import isOwner from '../middlewares/isOwner.js';
 
 const router = Router();
 
-router.get('/', isLogged, isAdmin, getAllComptes);
-router.post('/', isLogged, isAdmin, isOwner, createCompte);
-router.get('/:id', isLogged, isAdmin, isOwner, getCompteById);
-router.put('/:id', isLogged, isAdmin, isOwner, updateCompte);
-router.delete('/:id', isLogged, isAdmin, isOwner, deleteCompte);
+router.use(isLogged);
+
+
+router.get('/', getAllComptes);
+router.post('/', createCompte);
+router.get('/:id', getCompteById);
+router.put('/:id', updateCompte);
+router.delete('/:id', deleteCompte);
 
 export default router;

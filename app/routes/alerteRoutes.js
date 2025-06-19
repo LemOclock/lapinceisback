@@ -6,25 +6,27 @@ import {
     updateAlerte,
     deleteAlerte
 } from '../controllers/alerteController.js';
-import isLogged from '../middlewares/isLogged.js';
-import isAdmin from '../middlewares/isAdmin.js';
-import isOwner from '../middlewares/isOwner.js'; 
+
 
 const router = Router();
 
+
+router.use(isLogged);
+
+
 // Récupérer toutes les alertes (admin uniquement)
-router.get('/', isLogged, isAdmin, getAllAlertes);
+router.get('/', getAllAlertes);
 
 // Créer une alerte (admin uniquement)
-router.post('/', isLogged, isAdmin, createAlerte);
+router.post('/', createAlerte);
 
 // Récupérer une alerte par id (admin uniquement)
-router.get('/:id', isLogged, isAdmin, getAlerteById);
+router.get('/:id', getAlerteById);
 
 // Mettre à jour une alerte (admin uniquement)
-router.put('/:id', isLogged, isAdmin, updateAlerte);
+router.put('/:id', updateAlerte);
 
 // Supprimer une alerte (admin uniquement)
-router.delete('/:id', isLogged, isAdmin, deleteAlerte);
+router.delete('/:id', deleteAlerte);
 
 export default router;

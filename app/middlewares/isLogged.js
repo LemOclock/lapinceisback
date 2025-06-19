@@ -1,14 +1,18 @@
+import jwt from 'jsonwebtoken';
+
+
+const SECRET = 'votre_secret_jwt';
+
 function isLogged(req, res, next) {
-  if (!req.session.isLogged) {
-    res.status(401).json({
-      success: false,
-      error: 'Unauthorized',
-      message: 'Vous n\'êtes pas autorisé à accéder à la page demandée.'
-    });
-  }
-  else {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
     next();
-  }
+  });
 }
 
 export default isLogged;
