@@ -6,7 +6,7 @@ import {
     updateAlerte,
     deleteAlerte
 } from '../controllers/alerteController.js';
-
+import isLogged from '../middlewares/isLogged.js';
 
 const router = Router();
 
