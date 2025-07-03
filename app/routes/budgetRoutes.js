@@ -4,7 +4,8 @@ import {
     createBudget,
     getBudgetById,
     updateBudget,
-    deleteBudget
+    deleteBudget,
+    getUserBudgets
 } from '../controllers/budgetController.js';
 import isLogged from '../middlewares/isLogged.js';
 
@@ -12,6 +13,8 @@ const router = Router();
 
 router.use(isLogged);
 
+// Récupérer les budgets de l'utilisateur
+router.get('/user', getUserBudgets);
 
 // Récupérer tous les budgets
 router.get('/', getAllBudgets);

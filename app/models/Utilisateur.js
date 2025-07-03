@@ -16,10 +16,9 @@ Utilisateur.init({
   image_utilisateur: { type: DataTypes.STRING(255), allowNull: true },
   numero_telephone: { type: DataTypes.STRING(18), unique: true, allowNull: true },
   role: {
-    type: DataTypes.STRING(6),
+    type: DataTypes.ENUM('user', 'admin'), 
     defaultValue: 'user',
-    allowNull: false,
-    validate: { isIn: [['user', 'admin']] }
+    allowNull: false
   }
 },
 

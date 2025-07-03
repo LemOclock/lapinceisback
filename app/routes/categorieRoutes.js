@@ -10,11 +10,15 @@ import isLogged from '../middlewares/isLogged.js';
 
 const router = Router();
 
+
+
+
+
 router.use(isLogged);
 
 router.get('/', getAllCategories);
 router.post('/', createCategorie);
-router.get('/:id', isLogged, getCategorieById);
+router.get('/:id', getCategorieById);
 router.put('/:id', updateCategorie);
 router.delete('/:id', deleteCategorie);
 

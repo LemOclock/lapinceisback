@@ -4,7 +4,8 @@ import {
     createCompte,
     getCompteById,
     updateCompte,
-    deleteCompte
+    deleteCompte,
+    getCompteByUserId
 } from '../controllers/compteController.js';
 import isLogged from '../middlewares/isLogged.js';
 
@@ -15,8 +16,10 @@ router.use(isLogged);
 
 router.get('/', getAllComptes);
 router.post('/', createCompte);
+router.get('/getcomptebyuserid', getCompteByUserId);
 router.get('/:id', getCompteById);
 router.put('/:id', updateCompte);
 router.delete('/:id', deleteCompte);
+
 
 export default router;

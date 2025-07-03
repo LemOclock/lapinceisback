@@ -28,7 +28,7 @@ Alerte.init({
   },
   budgetId: { // Clé étrangère obligatoire vers Budget
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   }
 }, {
   sequelize,

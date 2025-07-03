@@ -14,17 +14,15 @@ Compte.init({
   },
   solde_initial: {
     type: DataTypes.DECIMAL(10,2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00
   },
   devise: {
-    type: DataTypes.STRING(3),
-    allowNull: false
+    type: DataTypes.STRING(5),
+    allowNull: false,
+    defaultValue: 'EUR' 
   },
-  date_maj_solde: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
+
   // Clé étrangère vers utilisateur (sera créée par l'association)
   utilisateurId: {
     type: DataTypes.INTEGER,

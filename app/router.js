@@ -30,15 +30,6 @@ router.put('/profile', isLogged, utilisateurController.profile);
 router.put('/preferences', isLogged, utilisateurController.profile);
 router.delete('/id', isLogged, utilisateurController.profile);
 
-router.get('/operations', isLogged, websiteController.operation);
-router.post('/operations', isLogged, websiteController.operation);
-router.put('/operations', isLogged, websiteController.operation);
-router.delete('/operations', isLogged, websiteController.operation);
-
-router.get('/budget', isLogged, websiteController.budget);
-router.post('/budget', isLogged, websiteController.budget);
-router.put('/budget', isLogged, websiteController.budget);
-router.delete('/budget', isLogged, websiteController.budget);
 
 router.get('/overview', isLogged, websiteController.overview);
 router.get('/operations/stats', isLogged, websiteController.stats);

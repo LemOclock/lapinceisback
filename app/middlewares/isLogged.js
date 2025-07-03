@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+dotenv.config();
 
 
-const SECRET = 'votre_secret_jwt';
+const SECRET = process.env.JWT_SECRET;
 
 function isLogged(req, res, next) {
   const authHeader = req.headers['authorization'];
