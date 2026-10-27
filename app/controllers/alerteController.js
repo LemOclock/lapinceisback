@@ -1,103 +1,94 @@
 import { Alerte } from '../models/associations.js';
+import { serverError } from '../middlewares/errorHandler.js';
 
+// Toutes ces routes sont réservées aux admins (voir alerteRoutes.js)
+
+const NIVEAUX = ['info', 'warning', 'critical'];
+
+function pickAlerte(body) {
+  const { type_alerte, message, date_lecture, niveau_urgence, budgetId } = body || {};
+  return { type_alerte, message, date_lecture, niveau_urgence, budgetId };
+}
+
+function validateAlerte(data, partial) {
+  if (!partial && (!data.type_alerte || !data.message)) {
+    return 'Champs obligatoires manquants (type_alerte, message).';
+  }
+  if (data.type_alerte !== undefined && (typeof data.type_alerte !== 'string' || data.type_alerte.length > 30)) {
+    return 'type_alerte invalide (30 caractères max).';
+  }
+  if (data.message !== undefined && (typeof data.message !== 'string' || data.message.length > 500)) {
+    return 'message invalide (500 caractères max).';
+  }
+  if (data.niveau_urgence !== undefined && !NIVEAUX.includes(data.niveau_urgence)) {
+    return 'niveau_urgence invalide.';
+  }
+  return null;
+}
 
 export async function createAlerte(req, res) {
   try {
-    // Autorisation : seulement les admins peuvent créer une alerte
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
-    }
+    const data = pickAlerte(req.body);
+    const error = validateAlerte(data, false);
+    if (error) return res.status(400).json({ error });
 
-    const { type_alerte, message, date_lecture, niveau_urgence, budgetId } = req.body;
-
-    // Validation simple (à adapter selon tes besoins)
-    if (!type_alerte || !message || !budgetId) {
-      return res.status(400).json({ error: 'Champs obligatoires manquants.' });
-    }
-
-    const alerte = await Alerte.create({
-      type_alerte,
-      message,
-      date_lecture,
-      niveau_urgence,
-      budgetId
-    });
-
+    const alerte = await Alerte.create(data);
     res.status(201).json(alerte);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    serverError(res, error);
   }
 }
 
 // --------------------------------------------------------------------
 
-
-// Récupérer toutes les alertes
 export async function getAllAlertes(req, res) {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
-    }
-    const alertes = await Alerte.findAll();
+    const alertes = await Alerte.findAll({ order: [['id', 'ASC']] });
     res.json(alertes);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    serverError(res, error);
   }
 }
 
 // --------------------------------------------------------------------
 
-
-
-// Récupérer une alerte par son id
 export async function getAlerteById(req, res) {
   try {
     const alerte = await Alerte.findByPk(req.params.id);
     if (!alerte) return res.status(404).json({ error: 'Alerte non trouvée' });
     res.json(alerte);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    serverError(res, error);
   }
 }
 
 // --------------------------------------------------------------------
 
-
-// Mettre à jour une alerte
 export async function updateAlerte(req, res) {
   try {
-
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
-    }
-    const { id } = req.params;
-    const { type_alerte, message, date_lecture, niveau_urgence, budgetId } = req.body;
-    const alerte = await Alerte.findByPk(id);
+    const alerte = await Alerte.findByPk(req.params.id);
     if (!alerte) return res.status(404).json({ error: 'Alerte non trouvée' });
-    await alerte.update({ type_alerte, message, date_lecture, niveau_urgence, budgetId });
+
+    const data = pickAlerte(req.body);
+    const error = validateAlerte(data, true);
+    if (error) return res.status(400).json({ error });
+
+    await alerte.update(data);
     res.json(alerte);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    serverError(res, error);
   }
 }
 
 // --------------------------------------------------------------------
 
-
-
-// Supprimer une alerte
 export async function deleteAlerte(req, res) {
   try {
-
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
-    }
-    const { id } = req.params;
-    const alerte = await Alerte.findByPk(id);
+    const alerte = await Alerte.findByPk(req.params.id);
     if (!alerte) return res.status(404).json({ error: 'Alerte non trouvée' });
     await alerte.destroy();
     res.json({ message: 'Alerte supprimée avec succès' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    serverError(res, error);
   }
 }

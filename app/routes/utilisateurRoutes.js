@@ -1,24 +1,33 @@
 import { Router } from 'express';
 import {
+  getMe,
+  updateMe,
+  updateMyPassword,
+  deleteMe,
   getAllUtilisateurs,
-  createUtilisateur,
   getUtilisateurById,
   updateUtilisateur,
   deleteUtilisateur
 } from '../controllers/utilisateurController.js';
 import isLogged from '../middlewares/isLogged.js';
+import isAdmin from '../middlewares/isAdmin.js';
+import validateId from '../middlewares/validateId.js';
 
 const router = Router();
-
-
-router.post('/', createUtilisateur);
+router.param('id', validateId);
 
 router.use(isLogged);
 
-router.get('/', getAllUtilisateurs);
+// -------------------------- Utilisateur connecté
+router.get('/me', getMe);
+router.put('/me', updateMe);
+router.put('/me/password', updateMyPassword);
+router.delete('/me', deleteMe);
 
-router.get('/:id', getUtilisateurById);
-router.put('/:id', updateUtilisateur);
-router.delete('/:id', deleteUtilisateur);
+// -------------------------- Administration
+router.get('/', isAdmin, getAllUtilisateurs);
+router.get('/:id', isAdmin, getUtilisateurById);
+router.put('/:id', isAdmin, updateUtilisateur);
+router.delete('/:id', isAdmin, deleteUtilisateur);
 
 export default router;

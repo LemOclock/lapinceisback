@@ -1,90 +1,62 @@
-import validator from 'validator';
 import bcrypt from 'bcrypt';
-import Utilisateur from "../models/Utilisateur.js";
-import Compte from "../models/Compte.js";
-import { createUserWithValidation } from '../utils/validationRegister.js'
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-dotenv.config();
+import { Utilisateur, Compte } from '../models/associations.js';
+import { createUserWithValidation } from '../utils/validationRegister.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
+import { serverError } from '../middlewares/errorHandler.js';
+
+// Hash factice : permet de garder un temps de réponse identique que l'email existe ou non
+const DUMMY_HASH = bcrypt.hashSync('mot-de-passe-factice', 10);
 
 const authController = {
 
-  login: function (req, res) {
-    res.status(200).json({
-      page: 'login',
-      title: 'Connexion'
-    });
-  },
-
-
   loginAction: async function (req, res) {
     try {
-      const email = req.body.email.trim().toLowerCase();
-      const foundUser = await Utilisateur.findOne({ where: { email } });
-      if (foundUser) {
-        const isPasswordValid = await bcrypt.compare(req.body.mot_de_passe, foundUser.mot_de_passe);
+      const { email, mot_de_passe } = req.body || {};
+      if (typeof email !== 'string' || typeof mot_de_passe !== 'string') {
+        return res.status(400).json({ success: false, error: 'Email et mot de passe requis' });
+      }
 
-        if (isPasswordValid) {
+      const foundUser = await Utilisateur.findOne({ where: { email: email.trim().toLowerCase() } });
+      const isPasswordValid = await bcrypt.compare(mot_de_passe, foundUser ? foundUser.mot_de_passe : DUMMY_HASH);
 
-
-          const userAccount = await Compte.findOne({
-            where: { utilisateurId: foundUser.id }
-          });
-
-          const SECRET = process.env.JWT_SECRET;
-          const token = jwt.sign({ id: foundUser.id, email: foundUser.email }, SECRET, { expiresIn: '1h' });
-
-          let redirectUrl;
-          if (userAccount) {
-            redirectUrl = '/dashboard';
-          } else {
-            redirectUrl = '/config';
-          }
-
-          res.status(200).json({
-            token,
-            success: true,
-            message: 'Connexion réussie',
-            redirectUrl,
-            user: {
-              id: foundUser.id,
-              email: foundUser.email,
-              prenom: foundUser.prenom,
-              nom: foundUser.nom
-            }
-          });
-        } else {
-          res.status(401).json({
-            success: false,
-            error: 'Mauvais couple identifiant/mot de passe'
-          });
-        }
-      } else {
-        res.status(401).json({
+      if (!foundUser || !isPasswordValid) {
+        return res.status(401).json({
           success: false,
           error: 'Mauvais couple identifiant/mot de passe'
         });
       }
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: error.message
+
+      const userAccount = await Compte.findOne({
+        where: { utilisateurId: foundUser.id }
       });
+
+      const token = jwt.sign(
+        { id: foundUser.id, email: foundUser.email, role: foundUser.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN, algorithm: 'HS256' }
+      );
+
+      res.status(200).json({
+        token,
+        success: true,
+        message: 'Connexion réussie',
+        redirectUrl: userAccount ? '/dashboard' : '/config',
+        user: {
+          id: foundUser.id,
+          email: foundUser.email,
+          prenom: foundUser.prenom,
+          nom: foundUser.nom
+        }
+      });
+    } catch (error) {
+      serverError(res, error);
     }
-  },
-
-
-  signup: function (req, res) {
-    res.status(200).json({
-      page: 'register',
-      title: 'Inscription'
-    });
   },
 
   signupAction: async function (req, res) {
     try {
-      const newUser = await createUserWithValidation(req.body);
-
+      const newUser = await createUserWithValidation(req.body || {});
 
       res.status(201).json({
         success: true,
@@ -98,16 +70,15 @@ const authController = {
         }
       });
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
+      if (error.isValidation) {
+        return res.status(400).json({ success: false, error: error.message });
+      }
+      serverError(res, error);
     }
   },
 
+  // Le JWT est stocké côté client : la déconnexion consiste à le supprimer côté front
   logout: function (req, res) {
-
-
     res.status(200).json({
       success: true,
       message: 'Déconnexion réussie',
@@ -117,4 +88,4 @@ const authController = {
 
 };
 
-export default authController; 
+export default authController;

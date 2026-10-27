@@ -8,16 +8,19 @@ import {
     getUserBudgets
 } from '../controllers/budgetController.js';
 import isLogged from '../middlewares/isLogged.js';
+import isAdmin from '../middlewares/isAdmin.js';
+import validateId from '../middlewares/validateId.js';
 
 const router = Router();
+router.param('id', validateId);
 
 router.use(isLogged);
 
 // Récupérer les budgets de l'utilisateur
 router.get('/user', getUserBudgets);
 
-// Récupérer tous les budgets
-router.get('/', getAllBudgets);
+// Récupérer tous les budgets (admin)
+router.get('/', isAdmin, getAllBudgets);
 
 // Créer un budget
 router.post('/', createBudget);

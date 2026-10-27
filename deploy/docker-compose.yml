@@ -1,0 +1,75 @@
+# La Pince — déploiement
+# Arborescence attendue sur le serveur :
+#   lapince/
+#     lapinceisback/   (ce dépôt, ce fichier dans deploy/)
+#     lapinceisfront/
+#
+# Seul le service "web" est exposé, et uniquement sur 127.0.0.1 :
+# le Caddy de l'hôte fait le HTTPS et redirige le domaine vers 127.0.0.1:${WEB_PORT}.
+
+name: lapince
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lapince
+      POSTGRES_USER: lapince
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans deploy/.env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lapince -d lapince"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+
+  api:
+    build:
+      context: ..
+    restart: unless-stopped
+    environment:
+      PG_URL: postgres://lapince:${POSTGRES_PASSWORD}@db:5432/lapince
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans deploy/.env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      PORT: 3000
+      # Client -> Caddy (hôte) -> Nginx (web) -> API
+      TRUST_PROXY: 2
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+      - frontend
+
+  web:
+    build:
+      context: ../../lapinceisfront
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8090}:80"
+    depends_on:
+      - api
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - frontend
+
+networks:
+  # La base n'a aucun accès réseau extérieur
+  backend:
+    internal: true
+  frontend:
+
+volumes:
+  db-data:

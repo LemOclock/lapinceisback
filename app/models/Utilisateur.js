@@ -1,7 +1,14 @@
 import { Model, DataTypes } from 'sequelize';
 import sequelize from '../database.js';
 
-class Utilisateur extends Model { }
+class Utilisateur extends Model {
+  // Ne jamais renvoyer le hash du mot de passe dans les réponses JSON
+  toJSON() {
+    const values = { ...this.get() };
+    delete values.mot_de_passe;
+    return values;
+  }
+}
 
 Utilisateur.init({
   email: {

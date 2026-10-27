@@ -24,8 +24,7 @@ const ALERTES_TEMPLATES = [
 
   }
 ];
-const CATEGORIES_SYSTEME = [
-
+const CATEGORIES_REVENUS = [
   {
     nom_categorie: 'Revenus',
     description: 'Salaire, primes, revenus',
@@ -68,9 +67,10 @@ const CATEGORIES_SYSTEME = [
     description: 'Livret A, investissements',
     couleur: '#F7DC6F',
     icone: '🏦'
-  },
+  }
+];
 
-
+const CATEGORIES_DEPENSES = [
   // 🍽️ ALIMENTATION & BOISSONS
   {
     nom_categorie: 'Courses alimentaires',
@@ -249,18 +249,6 @@ const CATEGORIES_SYSTEME = [
 
   // 💰 FINANCES
   {
-    nom_categorie: 'Revenus',
-    description: 'Salaire, primes, revenus',
-    couleur: '#98D8C8',
-    icone: '💰'
-  },
-  {
-    nom_categorie: 'Épargne',
-    description: 'Livret A, investissements',
-    couleur: '#F7DC6F',
-    icone: '🏦'
-  },
-  {
     nom_categorie: 'Impôts & Taxes',
     description: 'Impôts, taxes diverses',
     couleur: '#CD5C5C',
@@ -276,13 +264,18 @@ const CATEGORIES_SYSTEME = [
   }
 ];
 
+const CATEGORIES_SYSTEME = [
+  ...CATEGORIES_REVENUS.map((categorie) => ({ ...categorie, type_categorie: 'revenu' })),
+  ...CATEGORIES_DEPENSES.map((categorie) => ({ ...categorie, type_categorie: 'depense' }))
+];
+
 // ✅ FONCTION UNIQUE qui fait tout
 async function seedDatabase() {
   try {
     console.log('🌱 === SEEDING DE LA BASE DE DONNÉES ===');
 
     // 1. ✅ Seeding des catégories
-    console.log('\n🍽️ Création des 30 catégories système...');
+    console.log(`\n🍽️ Création des ${CATEGORIES_SYSTEME.length} catégories système...`);
     let categoriesCreated = 0;
     let categoriesExisting = 0;
 
@@ -296,6 +289,10 @@ async function seedDatabase() {
         console.log(`✅ Catégorie créée: ${categorie.nom_categorie} ${categorieData.icone}`);
         categoriesCreated++;
       } else {
+        // Met à jour le type si la catégorie existait déjà
+        if (categorie.type_categorie !== categorieData.type_categorie) {
+          await categorie.update({ type_categorie: categorieData.type_categorie });
+        }
         console.log(`ℹ️  Existe déjà: ${categorie.nom_categorie}`);
         categoriesExisting++;
       }
@@ -329,10 +326,9 @@ async function seedDatabase() {
 
   } catch (error) {
     console.error('❌ Erreur during seeding:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await sequelize.close();
-    process.exit();
   }
 }
 

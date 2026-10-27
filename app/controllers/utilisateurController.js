@@ -1,54 +1,149 @@
-import { Utilisateur } from '../models/associations.js';
+import { Op } from 'sequelize';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
-import { createUserWithValidation } from '../utils/validationRegister.js';
+import sequelize from '../database.js';
+import { Utilisateur, Compte, Operation, Budget, Alerte } from '../models/associations.js';
+import { PASSWORD_OPTIONS, PASSWORD_MESSAGE, isValidPhone } from '../utils/validationRegister.js';
+import { serverError } from '../middlewares/errorHandler.js';
 
+// Valide les champs de profil modifiables et renvoie les données à enregistrer
+async function buildProfileUpdate(body, userId) {
+  const { email, prenom, nom, numero_telephone } = body || {};
+  const data = {};
 
-
-const utilisateurController = {
-  profile: async function (req, res) {
-    try {
-      const user = await Utilisateur.findOne({ where: { email: req.session.userEmail } });
-      if (!user) {
-        return res.status(404).json({ success: false, error: 'Utilisateur non trouvé' });
-      }
-      res.json({ success: true, utilisateur: user });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+  if (email !== undefined) {
+    if (typeof email !== 'string' || !validator.isEmail(email.trim()) || email.length > 100) {
+      return { error: 'Email invalide.' };
     }
-  },
-};
+    const normalized = email.trim().toLowerCase();
+    const existing = await Utilisateur.findOne({ where: { email: normalized, id: { [Op.ne]: userId } } });
+    if (existing) return { error: 'Cet email est déjà utilisé.' };
+    data.email = normalized;
+  }
+  if (prenom !== undefined) {
+    if (typeof prenom !== 'string' || !validator.isLength(prenom.trim(), { min: 1, max: 50 })) {
+      return { error: 'Le prénom doit faire 1 à 50 caractères.' };
+    }
+    data.prenom = prenom.trim();
+  }
+  if (nom !== undefined) {
+    if (typeof nom !== 'string' || !validator.isLength(nom.trim(), { min: 1, max: 50 })) {
+      return { error: 'Le nom doit faire 1 à 50 caractères.' };
+    }
+    data.nom = nom.trim();
+  }
+  if (numero_telephone !== undefined) {
+    const phone = numero_telephone ? String(numero_telephone).trim() : null;
+    if (phone && !isValidPhone(phone)) {
+      return { error: 'Numéro de téléphone invalide.' };
+    }
+    if (phone) {
+      const existing = await Utilisateur.findOne({ where: { numero_telephone: phone, id: { [Op.ne]: userId } } });
+      if (existing) return { error: 'Ce numéro de téléphone est déjà utilisé.' };
+    }
+    data.numero_telephone = phone;
+  }
+  return { data };
+}
+
+// Supprime un utilisateur et toutes ses données (compte, opérations, budgets, alertes)
+async function destroyUserWithData(utilisateur) {
+  await sequelize.transaction(async (transaction) => {
+    const comptes = await Compte.findAll({ where: { utilisateurId: utilisateur.id }, transaction });
+    const compteIds = comptes.map((compte) => compte.id);
+
+    if (compteIds.length > 0) {
+      const budgets = await Budget.findAll({ where: { compteId: compteIds }, transaction });
+      const budgetIds = budgets.map((budget) => budget.id);
+      if (budgetIds.length > 0) {
+        await Alerte.destroy({ where: { budgetId: budgetIds }, transaction });
+      }
+      await Budget.destroy({ where: { compteId: compteIds }, transaction });
+      await Operation.destroy({ where: { compteId: compteIds }, transaction });
+      await Compte.destroy({ where: { id: compteIds }, transaction });
+    }
+    await utilisateur.destroy({ transaction });
+  });
+}
 
 // -----------------------------------------------------------
+// Utilisateur connecté
+// -----------------------------------------------------------
 
-
-
-export async function createUtilisateur(req, res) {
+export async function getMe(req, res) {
   try {
-
-    const utilisateur = await createUserWithValidation(req.body);
-    res.status(201).json(utilisateur);
+    const utilisateur = await Utilisateur.findByPk(req.user.id);
+    if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    res.json(utilisateur);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    serverError(res, error);
   }
 }
 
+export async function updateMe(req, res) {
+  try {
+    const utilisateur = await Utilisateur.findByPk(req.user.id);
+    if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    const { data, error } = await buildProfileUpdate(req.body, utilisateur.id);
+    if (error) return res.status(400).json({ error });
+
+    await utilisateur.update(data);
+    res.json(utilisateur);
+  } catch (error) {
+    serverError(res, error);
+  }
+}
+
+export async function updateMyPassword(req, res) {
+  try {
+    const { mot_de_passe_actuel, nouveau_mot_de_passe } = req.body || {};
+    if (typeof mot_de_passe_actuel !== 'string' || typeof nouveau_mot_de_passe !== 'string') {
+      return res.status(400).json({ error: 'Mot de passe actuel et nouveau mot de passe requis.' });
+    }
+
+    const utilisateur = await Utilisateur.findByPk(req.user.id);
+    if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    const isValid = await bcrypt.compare(mot_de_passe_actuel, utilisateur.mot_de_passe);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Le mot de passe actuel est incorrect.' });
+    }
+    if (nouveau_mot_de_passe.length > 72 || !validator.isStrongPassword(nouveau_mot_de_passe, PASSWORD_OPTIONS)) {
+      return res.status(400).json({ error: PASSWORD_MESSAGE });
+    }
+
+    await utilisateur.update({ mot_de_passe: await bcrypt.hash(nouveau_mot_de_passe, 10) });
+    res.json({ success: true, message: 'Mot de passe modifié avec succès' });
+  } catch (error) {
+    serverError(res, error);
+  }
+}
+
+export async function deleteMe(req, res) {
+  try {
+    const utilisateur = await Utilisateur.findByPk(req.user.id);
+    if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    await destroyUserWithData(utilisateur);
+    res.json({ success: true, message: 'Compte supprimé avec succès' });
+  } catch (error) {
+    serverError(res, error);
+  }
+}
+
+// -----------------------------------------------------------
+// Administration (routes protégées par isAdmin)
 // -----------------------------------------------------------
 
 export async function getAllUtilisateurs(req, res) {
-  console.log("getAllUtilisateurs called");
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs.' });
-    }
-    const utilisateurs = await Utilisateur.findAll();
+    const utilisateurs = await Utilisateur.findAll({ order: [['id', 'ASC']] });
     res.json(utilisateurs);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    serverError(res, error);
   }
 }
-
-// -----------------------------------------------------------
 
 export async function getUtilisateurById(req, res) {
   try {
@@ -56,84 +151,41 @@ export async function getUtilisateurById(req, res) {
     if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
     res.json(utilisateur);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    serverError(res, error);
   }
 }
-
-// -----------------------------------------------------------
 
 export async function updateUtilisateur(req, res) {
   try {
-    const { id } = req.params;
-    let { email, mot_de_passe, prenom, nom, numero_telephone, image_utilisateur, role } = req.body;
+    const utilisateur = await Utilisateur.findByPk(req.params.id);
+    if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
-    const utilisateur = await Utilisateur.findByPk(id);
-    if (!utilisateur) {
-      return res.status(404).json({ error: 'Utilisateur non trouvé' });
-    }
+    const { data, error } = await buildProfileUpdate(req.body, utilisateur.id);
+    if (error) return res.status(400).json({ error });
 
-    // Validation des champs (si présents)
-    if (email && !validator.isEmail(email)) {
-      return res.status(400).json({ error: "Email invalide." });
-    }
-    if (mot_de_passe && !validator.isStrongPassword(mot_de_passe, { minLength: 12, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })) {
-      return res.status(400).json({ error: "Le mot de passe doit comporter au moins 12 caractères, 1 majuscule, 1 minuscule, 1 chiffre et 1 caractère spécial." });
-    }
-    if (prenom && !validator.isLength(prenom, { min: 1, max: 100 })) {
-      return res.status(400).json({ error: "Le prénom doit faire 1 à 100 caractères." });
-    }
-    if (nom && !validator.isLength(nom, { min: 1, max: 100 })) {
-      return res.status(400).json({ error: "Le nom doit faire 1 à 100 caractères." });
-    }
-    if (
-      numero_telephone &&
-      !validator.isLength(numero_telephone, { min: 6, max: 20 }) // longueur raisonnable
-    ) {
-      return res.status(400).json({ error: "Le numéro de téléphone doit faire entre 6 et 20 caractères." });
-    }
-    if (
-      numero_telephone &&
-      !validator.isNumeric(numero_telephone)
-    ) {
-      return res.status(400).json({ error: "Le numéro de téléphone doit contenir uniquement des chiffres." });
-    }
-    // Hash du mot de passe si modifié
-    if (mot_de_passe) {
-      mot_de_passe = await bcrypt.hash(mot_de_passe, 10);
+    const { role } = req.body || {};
+    if (role !== undefined) {
+      if (role !== 'user' && role !== 'admin') {
+        return res.status(400).json({ error: 'Rôle invalide.' });
+      }
+      data.role = role;
     }
 
-    await utilisateur.update({
-      email,
-      mot_de_passe,
-      prenom,
-      nom,
-      numero_telephone,
-      image_utilisateur,
-      role
-    });
-
+    await utilisateur.update(data);
     res.json(utilisateur);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    serverError(res, error);
   }
 }
-
-// -----------------------------------------------------------
 
 export async function deleteUtilisateur(req, res) {
   try {
-    const { id } = req.params;
+    const utilisateur = await Utilisateur.findByPk(req.params.id);
+    if (!utilisateur) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
-    const utilisateur = await Utilisateur.findByPk(id);
-    if (!utilisateur) {
-      return res.status(404).json({ error: 'Utilisateur non trouvé' });
-    }
-
-    await utilisateur.destroy();
+    await destroyUserWithData(utilisateur);
     res.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    serverError(res, error);
   }
 }
-
-export default utilisateurController;

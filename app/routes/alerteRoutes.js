@@ -8,25 +8,18 @@ import {
 } from '../controllers/alerteController.js';
 import isLogged from '../middlewares/isLogged.js';
 import isAdmin from '../middlewares/isAdmin.js';
+import validateId from '../middlewares/validateId.js';
 
 const router = Router();
-// Récupérer toutes les alertes (admin uniquement)
-router.get('/', getAllAlertes);
-// Récupérer une alerte par id (admin uniquement)
-router.get('/:id', getAlerteById);
+router.param('id', validateId);
 
-
-
-
+// Gestion des modèles d'alertes : admin uniquement
 router.use(isLogged, isAdmin);
 
-// Créer une alerte (admin uniquement)
+router.get('/', getAllAlertes);
+router.get('/:id', getAlerteById);
 router.post('/', createAlerte);
-
-// Mettre à jour une alerte (admin uniquement)
 router.put('/:id', updateAlerte);
-
-// Supprimer une alerte (admin uniquement)
 router.delete('/:id', deleteAlerte);
 
 export default router;

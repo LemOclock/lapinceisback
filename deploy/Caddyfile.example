@@ -1,0 +1,7 @@
+# Bloc à AJOUTER au Caddyfile existant de l'hôte (/etc/caddy/Caddyfile),
+# en remplaçant le domaine. Ne rien modifier aux autres blocs.
+
+lapince.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8090
+}

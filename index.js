@@ -1,6 +1,8 @@
+import { PORT, CORS_ORIGINS, TRUST_PROXY } from './app/config/env.js';
 import express from 'express';
-import dotenv from 'dotenv';
-import './app/database.js';
+import cors from 'cors';
+import helmet from 'helmet';
+import './app/models/associations.js';
 import router from './app/router.js';
 import utilisateurRoutes from './app/routes/utilisateurRoutes.js';
 import compteRoutes from './app/routes/compteRoutes.js';
@@ -8,39 +10,23 @@ import categorieRoutes from './app/routes/categorieRoutes.js';
 import budgetRoutes from './app/routes/budgetRoutes.js';
 import operationRoutes from './app/routes/operationRoutes.js';
 import alerteRoutes from './app/routes/alerteRoutes.js';
-import cors from 'cors';
-import { v2 as cloudinary } from 'cloudinary';
-
-
-dotenv.config();
-
-
-// Configuration Cloudinary pour les images
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  secure: true,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-
-
-export { cloudinary };
-
-//-------------------------------------------------------
+import { notFound, errorHandler } from './app/middlewares/errorHandler.js';
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
+// Derrière les reverse proxies : nécessaire pour récupérer la vraie IP du client (rate limit)
+app.set('trust proxy', TRUST_PROXY);
+app.disable('x-powered-by');
 
-app.use(cors({
-  origin: 'https://projet-la-pince-front-production.up.railway.app', // URL DU FRONT
-  credentials: true
-}));
+app.use(helmet());
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+if (CORS_ORIGINS.length > 0) {
+  app.use(cors({ origin: CORS_ORIGINS }));
+}
 
 //--------------------------------------------------------------------------------------
-
 
 // Branche chaque groupe de routes sur un préfixe d'URL
 app.use('/utilisateurs', utilisateurRoutes);
@@ -52,16 +38,9 @@ app.use('/alertes', alerteRoutes);
 
 app.use('/', router);
 
+app.use(notFound);
+app.use(errorHandler);
 
-// Importation des routes
-
-
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: "La page demandée n'a pas été trouvée." });
-});
-
-
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur le port ${PORT}`);
 });
